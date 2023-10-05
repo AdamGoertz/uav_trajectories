@@ -35,6 +35,12 @@ int main(int argc, char **argv)
   std::string outputFile;
   double v_max;
   double a_max;
+  int max_iters;
+  double f_rel;
+  double x_rel;
+  double time_penalty;
+  double initial_stepsize_rel;
+  double inequality_constraint_tolerance;
 
   namespace po = boost::program_options;
 
@@ -45,6 +51,12 @@ int main(int argc, char **argv)
     ("output,o", po::value<std::string>(&outputFile)->required(), "path to output files")
     ("v_max", po::value<double>(&v_max)->default_value(1.0), "maximum velocity [m/s]")
     ("a_max", po::value<double>(&a_max)->default_value(1.0), "maximum velocity [m/s^2]")
+    ("max_iters", po::value<int>(&max_iters)->default_value(1000), "maximum number of iterations")
+    ("f_rel", po::value<double>(&f_rel)->default_value(0.05), "")
+    ("x_rel", po::value<double>(&x_rel)->default_value(0.1), "")
+    ("time_penalty", po::value<double>(&time_penalty)->default_value(500.0), "")
+    ("init_stepsize", po::value<double>(&initial_stepsize_rel)->default_value(0.1), "initial stepsize rel")
+    ("ineq_tol", po::value<double>(&inequality_constraint_tolerance)->default_value(0.1), "inequality constraint tolerance")
   ;
 
   try
@@ -127,18 +139,20 @@ int main(int argc, char **argv)
   opt.getSegments(&segments);
 #else
   mav_trajectory_generation::NonlinearOptimizationParameters parameters;
-  parameters.max_iterations = 1000;
-  parameters.f_rel = 0.05;
-  parameters.x_rel = 0.1;
-  parameters.time_penalty = 500.0;
-  parameters.initial_stepsize_rel = 0.1;
-  parameters.inequality_constraint_tolerance = 0.1;
+  parameters.max_iterations = max_iters;
+  parameters.f_rel = f_rel;
+  parameters.x_rel = x_rel;
+  parameters.time_penalty = time_penalty;
+  parameters.initial_stepsize_rel = initial_stepsize_rel;
+  parameters.inequality_constraint_tolerance = inequality_constraint_tolerance;
 
   mav_trajectory_generation::PolynomialOptimizationNonLinear<N> opt(dimension, parameters, false);
   opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
   opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::VELOCITY, v_max);
   opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::ACCELERATION, a_max);
   opt.optimize();
+
+  opt.getOptimizationInfo().print(std::cout);
 
   // Obtain the polynomial segments.
   opt.getPolynomialOptimizationRef().getSegments(&segments);
